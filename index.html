@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CLUBHAUS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    
+    <style>
+        /* BASE CSS IS DARK MODE */
+        body { 
+            margin: 0; overflow: hidden; font-family: 'Inter', sans-serif; 
+            background-color: #0a0a0a; color: #fff; touch-action: none; user-select: none;
+        }
+        canvas { display: block; outline: none; touch-action: none; }
+        
+        .glass-panel {
+            background: rgba(15, 15, 15, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; pointer-events: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        /* Top Right Viewport Controls */
+        #viewport-controls { 
+            position: absolute; top: 20px; right: 20px; padding: 4px 6px; z-index: 10; 
+            display: flex; align-items: center; flex-wrap: nowrap; justify-content: flex-end; gap: 4px; 
+            border-radius: 8px;
+        }
+
+        /* Modular Left UI Structure */
+        #left-ui-container {
+            position: absolute; top: 20px; left: 20px; bottom: 20px; width: 260px; z-index: 10;
+            display: flex; flex-direction: column; gap: 12px; pointer-events: none;
+        }
+
+        #toolbox-container {
+            display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; pointer-events: auto;
+        }
+        
+        .tabs-header {
+            display: flex; flex-direction: row; flex-wrap: nowrap; padding: 6px; gap: 4px;
+            background: rgba(0,0,0,0.4); border-bottom: 1px solid rgba(255,255,255,0.05);
+            flex-shrink: 0; justify-content: space-between; align-items: stretch;
+        }
+        
+        .tab-btn {
+            background: transparent; color: #888; border: none; font-size: 8px; font-weight: 700; letter-spacing: 0.5px;
+            padding: 6px 2px; border-radius: 6px; cursor: pointer; transition: all 0.2s; text-transform: uppercase;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; flex: 1;
+            min-height: 44px; box-sizing: border-box;
+        }
+        .tab-btn .material-symbols-outlined { font-size: 18px; margin: 0; padding: 0; }
+        .tab-btn.active { background: rgba(255,255,255,0.1); color: #fff; }
+        .tab-btn:hover:not(.active) { color: #ccc; background: rgba(255,255,255,0.05); }
+
+        .tab-content-wrapper { 
+            flex-grow: 1; position: relative; overflow-y: auto; overflow-x: hidden;
+        }
+        .tab-content-wrapper::-webkit-scrollbar { width: 4px; }
+        .tab-content-wrapper::-webkit-scrollbar-track { background: transparent; }
+        .tab-content-wrapper::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+        .tab-content { 
+            display: none; padding: 20px; flex-direction: column; gap: 16px;
+        }
+        .tab-content.active { display: flex; }
+
+        .group-title { font-size: 9px; color: #fff; text-transform: uppercase; letter-spacing: 1px; font-weight: 900; margin-bottom: 2px; display: flex; align-items: center; gap: 6px;}
+        .group-title .material-symbols-outlined { font-size: 14px; color: #00d2ff; }
+        
+        .h-divider { width: 100%; height: 1px; background: rgba(255,255,255,0.1); margin: 2px 0; }
+        .v-divider { width: 1px; height: 18px; background: rgba(255,255,255,0.15); margin: 0 2px; }
+        
+        button {
+            background: transparent; color: #ccc; border: 1px solid transparent; font-family: 'Inter', sans-serif;
+            font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s; height: 28px;
+            display: flex; justify-content: center; align-items: center; gap: 6px; white-space: nowrap;
+        }
+        button:hover:not(:disabled) { background: rgba(255,255,255,0.1); color: #fff; }
+        button.active { background: #fff; color: #000; font-weight: 700; }
+        
+        .icon-btn { padding: 4px 8px; min-width: auto; border: 1px solid transparent; }
+        .icon-btn .material-symbols-outlined { font-size: 16px; margin: 0; }
+        .icon-btn:hover { background: rgba(255,255,255,0.1); }
+        .icon-btn.active { background: #fff; color: #000; }
+        
+        .action-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff;}
+        .action-btn:hover { background: #fff; color: #000; }
+        .danger-btn { color: #ff5555; background: rgba(255, 85, 85, 0.1); }
+        .danger-btn:hover { background: #ff5555; color: #fff; }
+
+        /* Sliders */
+        .slider-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; }
+        .slider-row label { font-size: 9px; font-weight: 600; color: #aaa; text-transform: uppercase; width: 60px; flex-shrink: 0; letter-spacing: 0.5px; cursor: help; }
+        .slider-row label:hover { color: #fff; }
+        .slider-row input[type=range] { flex-grow: 1; width: 10px; }
+        .slider-row .val-input { width: 40px; flex-shrink: 0; text-align: center; }
+
+        .val-input {
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);
+            color: #fff; font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700;
+            border-radius: 4px; padding: 4px 0; outline: none; transition: border 0.2s;
+        }
+        .val-input:focus { border-color: #00d2ff; background: #000; }
+        .val-input::-webkit-outer-spin-button, .val-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .val-input[type=number] { -moz-appearance: textfield; }
+
+        input[type=range] { -webkit-appearance: none; background: transparent; margin: 0; padding: 6px 0;}
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 12px; width: 12px; border-radius: 50%; background: #fff; cursor: pointer; margin-top: -4px; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+        input[type=color] { -webkit-appearance: none; border: none; width: 100%; height: 22px; border-radius: 4px; cursor: pointer; background: transparent; padding: 0; }
+        input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type=color]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; }
+
+        /* HUD */
+        #key-hints {
+            pointer-events: auto; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;
+            font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;
+            padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); 
+            background: rgba(0,0,0,0.4); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+        }
+        .shortcut-title {
+            font-weight: 900; margin-top: 0; margin-bottom: 2px; color: #fff; font-size: 10px; 
+            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;
+        }
+        .hint-line { display: flex; align-items: center; gap: 6px; }
+        .key-btn { background: rgba(255,255,255,0.2); color: #fff; padding: 3px 6px; border-radius: 4px; font-weight: 900; }
+
+        /* Overlays */
+        #status-overlay, #drag-drop-overlay {
+            position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700;
+            background: rgba(0,0,0,0.8); color: #fff; z-index: 999;
+            transition: opacity 0.3s; pointer-events: none; opacity: 0;
+        }
+        #status-overlay { pointer-events: none; opacity: 1; font-size: 14px; background: transparent; align-items: flex-start; padding-top: 40px; }
+        #status-box { background: rgba(0,0,0,0.8); padding: 12px 24px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 8px;}
+        #drag-drop-overlay.active { opacity: 1; border: 4px dashed #00d2ff; background: rgba(0,210,255,0.1); box-sizing: border-box; }
+
+        /* LIGHT MODE OVERRIDES */
+        body.light-mode { background-color: #e5e5e5; color: #000; }
+        body.light-mode .glass-panel { background: rgba(240, 240, 240, 0.9); border-color: rgba(0,0,0,0.1); box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+        body.light-mode .tabs-header { background: rgba(255,255,255,0.5); border-color: rgba(0,0,0,0.1); }
+        body.light-mode .tab-btn.active { background: #fff; color: #000; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        body.light-mode .tab-btn:hover:not(.active) { color: #333; }
+        body.light-mode button { color: #555; }
+        body.light-mode button:hover:not(:disabled) { background: rgba(0,0,0,0.05); color: #000; }
+        body.light-mode button.active { background: #000; color: #fff; }
+        body.light-mode button.action-btn { background: #fff; border-color: #ccc; color: #000; }
+        body.light-mode button.action-btn:hover { background: #000; color: #fff; }
+        body.light-mode .divider, body.light-mode .v-divider, body.light-mode .h-divider { background: rgba(0,0,0,0.1); }
+        body.light-mode .group-title { color: #000; }
+        body.light-mode .slider-row label { color: #666; }
+        body.light-mode .slider-row label:hover { color: #000; }
+        body.light-mode .val-input { background: #fff; border-color: #ccc; color: #000; }
+        body.light-mode .val-input:focus { border-color: #00d2ff; }
+        body.light-mode input[type=range]::-webkit-slider-runnable-track { background: rgba(0,0,0,0.15); }
+        body.light-mode input[type=range]::-webkit-slider-thumb { background: #000; }
+        body.light-mode #key-hints { color: rgba(0,0,0,0.7); background: rgba(255,255,255,0.85); border: 1px solid rgba(0,0,0,0.1); }
+        body.light-mode .shortcut-title { color: #000; border-color: rgba(0,0,0,0.1); }
+        body.light-mode .key-btn { background: rgba(0,0,0,0.1); color: #000; }
+        body.light-mode #status-box { background: rgba(255,255,255,0.9); color: #000; border-color: rgba(0,0,0,0.1); }
+        body.light-mode .tab-content-wrapper::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); }
+    </style>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/STLLoader.js"></script>
+</head>
+<body class="light-mode">
+
+    <div id="status-overlay"><div id="status-box"><span class="material-symbols-outlined">sync</span> Loading Engine...</div></div>
+    <div id="drag-drop-overlay">Drop GLB, GLTF, OBJ, or STL Here</div>
+
+    <div id="viewport-controls" class="glass-panel">
+        <button id="btnGrid" class="icon-btn active" onclick="toggleGrid()" title="Toggle Floor Grid">
+            <span class="material-symbols-outlined">grid_4x4</span> Grid
+        </button>
+        <button id="btnGridSnap" class="icon-btn active" onclick="toggleGridSnap()" title="Toggle Absolute Grid Snapping">
+            <span class="material-symbols-outlined">grid_on</span> Snap: ON
+        </button>
+        <div class="v-divider"></div>
+        <button id="btnWalls" class="icon-btn" onclick="toggleWalls()" title="Toggle Physics Walls">
+            <span class="material-symbols-outlined">fence</span> Walls
+        </button>
+        <button id="btnCeiling" class="icon-btn" onclick="toggleCeiling()" title="Toggle Physics Ceiling">
+            <span class="material-symbols-outlined">roofing</span> Ceiling
+        </button>
+        <div class="v-divider"></div>
+        <button id="btnCamToggle" class="icon-btn active" onclick="toggleCameraMode()" title="Toggle Perspective / Orthographic">
+            <span class="material-symbols-outlined">3d_rotation</span> Persp
+        </button>
+        <button id="btnResetCam" class="icon-btn" onclick="resetCamera()" title="Smooth Reset Camera View">
+            <span class="material-symbols-outlined">center_focus_strong</span> Reset
+        </button>
+        <div class="v-divider"></div>
+        <button id="btnSpawnMode" class="icon-btn" onclick="toggleSpawnMode()" title="Cycle Spawn Mode (Center -> Cursor -> Cannon)">
+            <span class="material-symbols-outlined">center_focus_weak</span> Spwn: Cntr
+        </button>
+        <div class="v-divider"></div>
+        <button id="btnThemeToggle" class="icon-btn" style="padding: 4px;" onclick="cycleTheme()" title="Cycle Theme (Light/Dark/Custom)">
+            <span class="material-symbols-outlined">dark_mode</span>
+        </button>
+    </div>
+
+    <div id="left-ui-container">
+        
+        <div id="toolbox-container" class="glass-panel">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('spawn', this)" title="Spawn Elements">
+                    <span class="material-symbols-outlined">add_box</span> Spawn
+                </button>
+                <button class="tab-btn" onclick="switchTab('physics', this)" title="Physics Engine">
+                    <span class="material-symbols-outlined">science</span> Physics
+                </button>
+                <button class="tab-btn" onclick="switchTab('light', this)" title="Lighting Setup">
+                    <span class="material-symbols-outlined">lightbulb</span> Light
+                </button>
+                <button class="tab-btn" onclick="switchTab('actions', this)" title="Global Actions">
+                    <span class="material-symbols-outlined">bolt</span> Action
+                </button>
+            </div>
+
+            <div class="tab-content-wrapper">
+                <div class="tab-content active" id="tab-spawn">
+                    <div class="group-title"><span class="material-symbols-outlined">library_add</span> Spawner</div>
+                    <div style="display: flex; gap: 8px; width: 100%;">
+                        <button class="action-btn" onclick="spawnBlock('club')" style="flex:1; justify-content:center; padding:0;"><span class="material-symbols-outlined">add</span> CLUB</button>
+                        <button class="action-btn" onclick="spawnBlock('haus')" style="flex:1; justify-content:center; padding:0;"><span class="material-symbols-outlined">add</span> HAUS</button>
+                    </div>
+                    <div class="h-divider"></div>
+                    
+                    <div class="group-title"><span class="material-symbols-outlined">tune</span> Base Attributes</div>
+                    <div class="slider-row">
+                        <label title="Adjusts the physical size of spawned blocks.">Scale</label>
+                        <input type="range" class="sync-slider" id="sizeSlider" data-target="valSize" min="0.5" max="50" step="0.1" value="10.0">
+                        <input type="number" class="val-input sync-num" id="valSize" data-target="sizeSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Weight of the block. Heavier blocks push lighter ones more easily.">Mass</label>
+                        <input type="range" class="sync-slider" id="massSlider" data-target="valMass" min="0.1" max="100" step="0.1" value="8.0">
+                        <input type="number" class="val-input sync-num" id="valMass" data-target="massSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Height from which the blocks are dropped when spawned in Center mode.">Drop Y</label>
+                        <input type="range" class="sync-slider" id="heightSlider" data-target="valHeight" min="2" max="200" step="1" value="30">
+                        <input type="number" class="val-input sync-num" id="valHeight" data-target="heightSlider">
+                    </div>
+                    <div class="slider-row" style="margin-top: 4px;">
+                        <label title="Applies a color tint to the spawned blocks.">Color</label>
+                        <input type="color" id="tintPicker" value="#ffffff">
+                    </div>
+                    <div class="h-divider"></div>
+
+                    <div class="group-title"><span class="material-symbols-outlined">speed</span> Initial Velocity</div>
+                    <div class="slider-row">
+                        <label title="Initial speed of the block along the X axis when it spawns.">Vel X</label>
+                        <input type="range" class="sync-slider" id="velXSlider" data-target="valVelX" min="-50" max="50" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valVelX" data-target="velXSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Initial speed of the block along the Y axis when it spawns.">Vel Y</label>
+                        <input type="range" class="sync-slider" id="velYSlider" data-target="valVelY" min="-50" max="50" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valVelY" data-target="velYSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Initial speed of the block along the Z axis when it spawns.">Vel Z</label>
+                        <input type="range" class="sync-slider" id="velZSlider" data-target="valVelZ" min="-50" max="50" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valVelZ" data-target="velZSlider">
+                    </div>
+                    <div class="h-divider"></div>
+
+                    <div class="group-title"><span class="material-symbols-outlined">360</span> Initial Spin</div>
+                    <div class="slider-row">
+                        <label title="Initial rotational speed around the X axis.">Spin X</label>
+                        <input type="range" class="sync-slider" id="spinXSlider" data-target="valSpinX" min="-20" max="20" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valSpinX" data-target="spinXSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Initial rotational speed around the Y axis.">Spin Y</label>
+                        <input type="range" class="sync-slider" id="spinYSlider" data-target="valSpinY" min="-20" max="20" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valSpinY" data-target="spinYSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Initial rotational speed around the Z axis.">Spin Z</label>
+                        <input type="range" class="sync-slider" id="spinZSlider" data-target="valSpinZ" min="-20" max="20" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valSpinZ" data-target="spinZSlider">
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-physics">
+                    <div class="group-title"><span class="material-symbols-outlined">explore</span> Global Forces</div>
+                    <div class="slider-row">
+                        <label title="Direction and strength of gravity along the X axis.">Grav X</label>
+                        <input type="range" class="sync-slider" id="gravXSlider" data-target="valGravX" min="-50" max="50" step="0.5" value="0" onchange="updateGravity()">
+                        <input type="number" class="val-input sync-num" id="valGravX" data-target="gravXSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Direction and strength of gravity along the Y axis.">Grav Y</label>
+                        <input type="range" class="sync-slider" id="gravYSlider" data-target="valGravY" min="-50" max="50" step="0.5" value="-9.8" onchange="updateGravity()">
+                        <input type="number" class="val-input sync-num" id="valGravY" data-target="gravYSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Direction and strength of gravity along the Z axis.">Grav Z</label>
+                        <input type="range" class="sync-slider" id="gravZSlider" data-target="valGravZ" min="-50" max="50" step="0.5" value="0" onchange="updateGravity()">
+                        <input type="number" class="val-input sync-num" id="valGravZ" data-target="gravZSlider">
+                    </div>
+                    <div class="h-divider"></div>
+                    
+                    <div class="group-title"><span class="material-symbols-outlined">storm</span> Wind & Vortex</div>
+                    <div class="slider-row">
+                        <label title="Directional wind force along the X axis.">Wind X</label>
+                        <input type="range" class="sync-slider" id="windXSlider" data-target="valWindX" min="-100" max="100" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valWindX" data-target="windXSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Directional wind force along the Y axis.">Wind Y</label>
+                        <input type="range" class="sync-slider" id="windYSlider" data-target="valWindY" min="-100" max="100" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valWindY" data-target="windYSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Directional wind force along the Z axis.">Wind Z</label>
+                        <input type="range" class="sync-slider" id="windZSlider" data-target="valWindZ" min="-100" max="100" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valWindZ" data-target="windZSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Rotational vortex force around the center. Positive is counter-clockwise, negative is clockwise.">Vortex</label>
+                        <input type="range" class="sync-slider" id="vortexSlider" data-target="valVortex" min="-200" max="200" step="1" value="0">
+                        <input type="number" class="val-input sync-num" id="valVortex" data-target="vortexSlider">
+                    </div>
+                    <div class="h-divider"></div>
+
+                    <div class="group-title"><span class="material-symbols-outlined">air</span> Dampening</div>
+                    <div class="slider-row">
+                        <label title="Air resistance. Higher values make blocks slow down faster.">Air Drag</label>
+                        <input type="range" class="sync-slider" id="linDampSlider" data-target="valLinDamp" min="0" max="0.99" step="0.01" value="0.1">
+                        <input type="number" class="val-input sync-num" id="valLinDamp" data-target="linDampSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Rotational resistance. Higher values stop blocks from spinning infinitely.">Spin Drag</label>
+                        <input type="range" class="sync-slider" id="angDampSlider" data-target="valAngDamp" min="0" max="0.99" step="0.01" value="0.1">
+                        <input type="number" class="val-input sync-num" id="valAngDamp" data-target="angDampSlider">
+                    </div>
+                    <div class="h-divider"></div>
+
+                    <div class="group-title"><span class="material-symbols-outlined">sports_basketball</span> Material</div>
+                    <div class="slider-row">
+                        <label title="Friction of the materials. Higher values make the floor and blocks more grippy.">Grip</label>
+                        <input type="range" class="sync-slider" id="frictionSlider" data-target="valFriction" min="0" max="5" step="0.05" value="0.7" onchange="updatePhysicsMaterials()">
+                        <input type="number" class="val-input sync-num" id="valFriction" data-target="frictionSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Bounciness (restitution) of the materials.">Bounce</label>
+                        <input type="range" class="sync-slider" id="bounceSlider" data-target="valBounce" min="0" max="2" step="0.05" value="0.1" onchange="updatePhysicsMaterials()">
+                        <input type="number" class="val-input sync-num" id="valBounce" data-target="bounceSlider">
+                    </div>
+                    <div class="h-divider"></div>
+
+                    <div class="group-title"><span class="material-symbols-outlined">handyman</span> Engine Solver</div>
+                    <div class="slider-row">
+                        <label title="How rigid the collision contacts are. Lower values make things squishy.">Stiffness</label>
+                        <input type="range" class="sync-slider" id="stiffSlider" data-target="valStiff" min="1000" max="100000000" step="100000" value="50000000" onchange="updateContactParams()">
+                        <input type="number" class="val-input sync-num" id="valStiff" data-target="stiffSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="How quickly the solver resolves overlaps. Controls the springiness of collisions.">Relax</label>
+                        <input type="range" class="sync-slider" id="relaxSlider" data-target="valRelax" min="0.1" max="20" step="0.1" value="3" onchange="updateContactParams()">
+                        <input type="number" class="val-input sync-num" id="valRelax" data-target="relaxSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Physics solver iterations. Higher is more accurate but costs performance.">Iterations</label>
+                        <input type="range" class="sync-slider" id="iterSlider" data-target="valIter" min="1" max="200" step="1" value="50" onchange="updateSolver()">
+                        <input type="number" class="val-input sync-num" id="valIter" data-target="iterSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Speed of the physics simulation.">Time Scale</label>
+                        <input type="range" class="sync-slider" id="timeSlider" data-target="valTime" min="0.05" max="50" step="0.05" value="5.0">
+                        <input type="number" class="val-input sync-num" id="valTime" data-target="timeSlider">
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-light">
+                    <div class="group-title"><span class="material-symbols-outlined">wb_sunny</span> Illumination</div>
+                    <div class="slider-row">
+                        <label title="Base lighting intensity across the entire scene.">Ambient</label>
+                        <input type="range" class="sync-slider" id="ambSlider" data-target="valAmb" min="0" max="2" step="0.05" value="0.4" onchange="updateLighting()">
+                        <input type="number" class="val-input sync-num" id="valAmb" data-target="ambSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Brightness of the main directional sun light.">Intensity</label>
+                        <input type="range" class="sync-slider" id="sunIntSlider" data-target="valSunInt" min="0" max="5" step="0.1" value="1.2" onchange="updateLighting()">
+                        <input type="number" class="val-input sync-num" id="valSunInt" data-target="sunIntSlider">
+                    </div>
+                    <div class="h-divider"></div>
+                    
+                    <div class="group-title"><span class="material-symbols-outlined">my_location</span> Sun Position</div>
+                    <div class="slider-row">
+                        <label title="Position of the main directional light source along the X axis.">Sun X</label>
+                        <input type="range" class="sync-slider" id="sunXSlider" data-target="valSunX" min="-100" max="100" step="1" value="15" onchange="updateLighting()">
+                        <input type="number" class="val-input sync-num" id="valSunX" data-target="sunXSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Position of the main directional light source along the Y axis.">Sun Y</label>
+                        <input type="range" class="sync-slider" id="sunYSlider" data-target="valSunY" min="5" max="100" step="1" value="25" onchange="updateLighting()">
+                        <input type="number" class="val-input sync-num" id="valSunY" data-target="sunYSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Position of the main directional light source along the Z axis.">Sun Z</label>
+                        <input type="range" class="sync-slider" id="sunZSlider" data-target="valSunZ" min="-100" max="100" step="1" value="10" onchange="updateLighting()">
+                        <input type="number" class="val-input sync-num" id="valSunZ" data-target="sunZSlider">
+                    </div>
+
+                    <div class="h-divider"></div>
+                    
+                    <div class="group-title"><span class="material-symbols-outlined">palette</span> Custom Theme</div>
+                    <div class="slider-row" style="margin-top: 4px;">
+                        <label title="Custom solid background color for the Custom Theme mode.">BG Color</label>
+                        <input type="color" id="bgColorPicker" value="#004223" onchange="setTheme('custom')">
+                    </div>
+                    <div class="slider-row" style="margin-top: 4px;">
+                        <label title="Custom grid line color for the Custom Theme mode.">Grid Color</label>
+                        <input type="color" id="gridColorPicker" value="#ffffff" onchange="setTheme('custom')">
+                    </div>
+                </div>
+
+                <div class="tab-content" id="tab-actions">
+                    <div class="group-title"><span class="material-symbols-outlined">aod</span> Modifiers</div>
+                    <button id="btnZeroG" class="action-btn" style="width:100%; justify-content:center; padding:0;" onclick="toggleZeroG()"><span class="material-symbols-outlined">flight_takeoff</span> Zero-G Mode</button>
+                    <div class="h-divider"></div>
+                    
+                    <div class="group-title"><span class="material-symbols-outlined">warning</span> Destructive</div>
+                    <div class="slider-row">
+                        <label title="Strength of the explosive force applied to all blocks.">Blast Pwr</label>
+                        <input type="range" class="sync-slider" id="blastSlider" data-target="valBlast" min="10" max="500" step="5" value="50">
+                        <input type="number" class="val-input sync-num" id="valBlast" data-target="blastSlider">
+                    </div>
+                    <div class="slider-row">
+                        <label title="Upward bias multiplier for the explosion.">Blast Up</label>
+                        <input type="range" class="sync-slider" id="blastUpSlider" data-target="valBlastUp" min="0" max="5" step="0.1" value="1.5">
+                        <input type="number" class="val-input sync-num" id="valBlastUp" data-target="blastUpSlider">
+                    </div>
+                    <div style="height: 4px;"></div>
+                    <button class="danger-btn" style="width:100%; justify-content:center; padding:0;" onclick="explode()"><span class="material-symbols-outlined">local_fire_department</span> Detonate All</button>
+                </div>
+            </div>
+            
+            <div style="padding: 12px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.2); flex-shrink: 0;">
+                <button class="danger-btn" onclick="clearStage()" style="width: 100%; justify-content: center; padding: 8px 0; height: 32px;">
+                    <span class="material-symbols-outlined" style="font-size: 16px;">delete</span> Clear Entire Board
+                </button>
+            </div>
+        </div>
+
+        <div id="key-hints" class="glass-panel">
+            <div class="shortcut-title">CONTROLS & SHORTCUTS</div>
+            
+            <div class="hint-line"><span class="key-btn">Q</span> <span class="key-btn">E</span> <span>Spawn Block</span></div>
+            <div style="height: 2px;"></div>
+            <div class="hint-line"><span class="key-btn">1</span> <span class="key-btn">2</span> <span>Scale Held Block</span></div>
+            <div style="height: 2px;"></div>
+            <div class="hint-line"><span class="key-btn">W</span> <span class="key-btn">S</span> <span>Flip Vertical</span></div>
+            <div class="hint-line"><span class="key-btn">A</span> <span class="key-btn">D</span> <span>Flip Horizontal</span></div>
+            <div style="height: 2px;"></div>
+            
+            <div class="hint-line"><span class="material-symbols-outlined" style="font-size:14px; color:#00d2ff;">ads_click</span> <span style="color: #00d2ff; font-weight: 700;">Point at block to snap</span></div>
+            <div class="hint-line">Hold <span class="key-btn">SHIFT</span> <span>Disable snap</span></div>
+            
+            <div style="height: 2px;"></div>
+            <div class="hint-line" style="opacity: 0.6;"><span class="material-symbols-outlined" style="font-size:14px;">upload_file</span> <span>Drop 3D models to import</span></div>
+        </div>
+
+    </div>
+
+    <script>
+        // Force unblock the UI safely
+        setTimeout(() => {
+            const overlay = document.getElementById('status-overlay');
+            if (overlay) {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 300);
+            }
+        }, 1000);
+
+        // State Toggles
+        let gridSnapActive = true;
+        window.toggleGridSnap = function() {
+            gridSnapActive = !gridSnapActive;
+            const btn = document.getElementById('btnGridSnap');
+            btn.classList.toggle('active', gridSnapActive);
+            btn.innerHTML = gridSnapActive ? '<span class="material-symbols-outlined">grid_on</span> Snap: ON' : '<span class="material-symbols-outlined">grid_off</span> Snap: OFF';
+        };
+
+        let isPersp = true;
+        window.toggleCameraMode = function() {
+            isPersp = !isPersp;
+            const btn = document.getElementById('btnCamToggle');
+            if (isPersp) {
+                btn.innerHTML = '<span class="material-symbols-outlined">3d_rotation</span> Persp';
+                setCamera('perspective');
+            } else {
+                btn.innerHTML = '<span class="material-symbols-outlined">architecture</span> Ortho';
+                setCamera('orthographic');
+            }
+        };
+
+        let spawnMode = 0; // 0 = Center, 1 = Cursor, 2 = Cannon
+        window.toggleSpawnMode = function() {
+            spawnMode = (spawnMode + 1) % 3;
+            const btn = document.getElementById('btnSpawnMode');
+            if (spawnMode === 0) {
+                btn.innerHTML = '<span class="material-symbols-outlined">center_focus_weak</span> Spwn: Cntr';
+                btn.classList.remove('active');
+            } else if (spawnMode === 1) {
+                btn.innerHTML = '<span class="material-symbols-outlined">ads_click</span> Spwn: Curs';
+                btn.classList.add('active');
+            } else {
+                btn.innerHTML = '<span class="material-symbols-outlined">rocket_launch</span> Spwn: Fire';
+                btn.classList.add('active');
+            }
+        };
+
+        let currentTheme = 'light';
+        window.cycleTheme = function() {
+            if(currentTheme === 'light') currentTheme = 'dark';
+            else if(currentTheme === 'dark') currentTheme = 'custom';
+            else currentTheme = 'light';
+            setTheme(currentTheme);
+        };
+
+        let isResettingCam = false;
+        let targetCamPos = new THREE.Vector3();
+        let targetCamLookAt = new THREE.Vector3();
+
+        window.resetCamera = function() {
+            isResettingCam = true;
+            if(activeCamera === perspCam) {
+                targetCamPos.set(0, 60, 140);
+            } else {
+                targetCamPos.set(60, 60, 60);
+            }
+            targetCamLookAt.set(0,0,0);
+        }
+
+        function getDecimals(step) {
+            if(!step || step === '1') return 0;
+            const parts = step.toString().split('.');
+            return parts.length > 1 ? parts[1].length : 0;
+        }
+
+        document.querySelectorAll('.sync-slider').forEach(slider => {
+            const numInput = document.getElementById(slider.dataset.target);
+            if(!numInput) return;
+            numInput.value = parseFloat(slider.value).toFixed(getDecimals(slider.step));
+            slider.addEventListener('input', (e) => {
+                numInput.value = parseFloat(e.target.value).toFixed(getDecimals(slider.step));
+            });
+        });
+
+        document.querySelectorAll('.sync-num').forEach(input => {
+            const slider = document.getElementById(input.dataset.target);
+            if(!slider) return;
+            input.addEventListener('input', (e) => {
+                let val = parseFloat(e.target.value);
+                if(isNaN(val)) return;
+                if(val < parseFloat(slider.min)) val = parseFloat(slider.min);
+                if(val > parseFloat(slider.max)) val = parseFloat(slider.max);
+                slider.value = val;
+                slider.dispatchEvent(new Event('change'));
+            });
+        });
+
+        function switchTab(tabName, btn) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        const scene = new THREE.Scene();
+
+        const aspect = window.innerWidth / window.innerHeight;
+        const perspCam = new THREE.PerspectiveCamera(40, aspect, 0.1, 3000);
+        perspCam.position.set(0, 60, 140);
+        
+        const d = 60;
+        const orthoCam = new THREE.OrthographicCamera(-d * aspect, d * aspect, d, -d, -1000, 3000);
+        orthoCam.position.set(60, 60, 60); orthoCam.lookAt(0,0,0);
+        
+        let activeCamera = perspCam;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
+        renderer.outputEncoding = THREE.sRGBEncoding; 
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9; 
+        document.body.appendChild(renderer.domElement);
+
+        renderer.domElement.addEventListener('pointerdown', () => {
+            if (document.activeElement && typeof document.activeElement.blur === 'function') {
+                document.activeElement.blur();
+            }
+        });
+
+        document.querySelectorAll('input[type=range]').forEach(slider => {
+            slider.addEventListener('change', () => slider.blur());
+            slider.addEventListener('mouseup', () => slider.blur()); 
+        });
+
+        document.querySelectorAll('input[type=number]').forEach(input => {
+            input.addEventListener('keydown', (e) => { if (e.key === 'Enter') input.blur(); });
+        });
+
+        let controls = new THREE.OrbitControls(activeCamera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.01; 
+
+        // Physics World Setup with Collision Groups
+        const world = new CANNON.World();
+        world.gravity.set(0, -9.82, 0);
+        world.broadphase = new CANNON.NaiveBroadphase();
+        world.solver.iterations = 50; 
+        world.solver.tolerance = 0.001;
+        world.allowSleep = true; 
+
+        const GROUP_FLOOR = 1;
+        const GROUP_BLOCK = 2;
+        
+        const defaultMaterial = new CANNON.Material('default');
+        let contactMaterial = new CANNON.ContactMaterial(defaultMaterial, defaultMaterial, { 
+            friction: 0.7, restitution: 0.1, contactEquationStiffness: 5e7, contactEquationRelaxation: 3, frictionEquationStiffness: 5e7 
+        });
+        world.addContactMaterial(contactMaterial);
+
+        let meshes = []; let bodies = [];
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4); scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        dirLight.position.set(15, 25, 10); dirLight.castShadow = true;
+        
+        // Expanded shadow frustum for massive floor
+        dirLight.shadow.mapSize.width = 4096; dirLight.shadow.mapSize.height = 4096;
+        dirLight.shadow.camera.near = 0.5; dirLight.shadow.camera.far = 1000;
+        dirLight.shadow.camera.left = -200; dirLight.shadow.camera.right = 200;
+        dirLight.shadow.camera.top = 200; dirLight.shadow.camera.bottom = -200;
+        dirLight.shadow.bias = -0.0005; scene.add(dirLight);
+
+        // Infinite invisible shadow floor
+        const shadowMat = new THREE.ShadowMaterial({ opacity: 0.15 });
+        const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(2000, 2000), shadowMat);
+        floorMesh.rotation.x = -Math.PI / 2; floorMesh.receiveShadow = true; scene.add(floorMesh);
+
+        const floorBody = new CANNON.Body({ 
+            mass: 0, shape: new CANNON.Plane(), material: defaultMaterial,
+            collisionFilterGroup: GROUP_FLOOR,
+            collisionFilterMask: GROUP_BLOCK
+        });
+        floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI / 2);
+        world.addBody(floorBody);
+
+        let floorGrid, northGrid, southGrid, westGrid, eastGrid, ceilGrid;
+        const gridMeshes = [];
+        let wallsActive = false; let ceilActive = false;
+
+        function createRectGrid(width, height, sizePerSquare, c1, c2) {
+            const points = []; const colors = [];
+            const color1 = new THREE.Color(c1); const color2 = new THREE.Color(c2);
+            const w2 = width/2; const h2 = height/2;
+            
+            for (let x = -w2; x <= w2 + 0.001; x += sizePerSquare) {
+                const isCenter = (Math.abs(x) < 0.001);
+                const color = isCenter ? color1 : color2;
+                points.push(x, -h2, 0, x, h2, 0);
+                colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
+            }
+            for (let y = -h2; y <= h2 + 0.001; y += sizePerSquare) {
+                const isCenter = (Math.abs(y) < 0.001);
+                const color = isCenter ? color1 : color2;
+                points.push(-w2, y, 0, w2, y, 0);
+                colors.push(color.r, color.g, color.b, color.r, color.g, color.b);
+            }
+            
+            const geometry = new THREE.BufferGeometry();
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            const material = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.5 });
+            return new THREE.LineSegments(geometry, material);
+        }
+
+        window.setTheme = function(theme) {
+            currentTheme = theme;
+            const themeBtn = document.getElementById('btnThemeToggle');
+            const iconSpan = themeBtn.querySelector('.material-symbols-outlined');
+            
+            if (theme === 'light') {
+                document.body.className = 'light-mode';
+                if(iconSpan) iconSpan.innerText = 'dark_mode';
+                scene.background = new THREE.Color('#e5e5e5'); 
+                shadowMat.opacity = 0.15;
+                ambientLight.intensity = 0.7; dirLight.intensity = 0.8; 
+                buildGrids('light');
+            } else if (theme === 'dark') {
+                document.body.className = 'dark-mode';
+                if(iconSpan) iconSpan.innerText = 'palette';
+                scene.background = new THREE.Color('#0a0a0a'); 
+                shadowMat.opacity = 0.5;
+                ambientLight.intensity = 0.4; dirLight.intensity = 1.2; 
+                buildGrids('dark');
+            } else if (theme === 'custom') {
+                document.body.className = 'dark-mode'; 
+                if(iconSpan) iconSpan.innerText = 'light_mode';
+                const bgCol = document.getElementById('bgColorPicker').value;
+                scene.background = new THREE.Color(bgCol); 
+                shadowMat.opacity = 0.3;
+                ambientLight.intensity = parseFloat(document.getElementById('ambSlider').value); 
+                dirLight.intensity = parseFloat(document.getElementById('sunIntSlider').value); 
+                buildGrids('custom');
+            }
+        }
+
+        function buildGrids(theme) {
+            gridMeshes.forEach(g => scene.remove(g)); gridMeshes.length = 0;
+            
+            let c1, c2;
+            if (theme === 'light') {
+                c1 = '#000000'; 
+                c2 = '#333333'; 
+            } else if (theme === 'dark') {
+                c1 = '#444444'; 
+                c2 = '#222222';
+            } else {
+                c1 = document.getElementById('gridColorPicker').value;
+                c2 = c1;
+            }
+            
+            const sqSize = 10;
+            
+            floorGrid = createRectGrid(400, 400, sqSize, c1, c2); 
+            floorGrid.rotation.x = -Math.PI/2; 
+            floorGrid.position.y = 0.01;
+
+            ceilGrid = createRectGrid(400, 400, sqSize, c1, c2); 
+            ceilGrid.rotation.x = Math.PI/2; 
+            ceilGrid.position.y = 200;
+
+            northGrid = createRectGrid(400, 200, sqSize, c1, c2);
+            northGrid.position.set(0, 100, -200);
+
+            southGrid = createRectGrid(400, 200, sqSize, c1, c2);
+            southGrid.position.set(0, 100, 200);
+            southGrid.rotation.y = Math.PI;
+
+            westGrid = createRectGrid(400, 200, sqSize, c1, c2);
+            westGrid.position.set(-200, 100, 0);
+            westGrid.rotation.y = Math.PI/2;
+
+            eastGrid = createRectGrid(400, 200, sqSize, c1, c2);
+            eastGrid.position.set(200, 100, 0);
+            eastGrid.rotation.y = -Math.PI/2;
+            
+            gridMeshes.push(floorGrid, northGrid, southGrid, westGrid, eastGrid, ceilGrid);
+            floorGrid.visible = document.getElementById('btnGrid').classList.contains('active');
+            northGrid.visible = wallsActive; southGrid.visible = wallsActive; westGrid.visible = wallsActive; eastGrid.visible = wallsActive;
+            ceilGrid.visible = ceilActive;
+            gridMeshes.forEach(g => scene.add(g));
+        }
+
+        const enclosureBodies = [];
+        function buildWallPhysics(x, y, z, w, h, d, isCeil = false) {
+            const body = new CANNON.Body({ 
+                mass: 0, material: defaultMaterial,
+                collisionFilterGroup: GROUP_FLOOR,
+                collisionFilterMask: GROUP_BLOCK
+            });
+            body.addShape(new CANNON.Box(new CANNON.Vec3(w/2, h/2, d/2))); body.position.set(x, y, z);
+            if(isCeil) enclosureBodies.ceiling = body; else enclosureBodies.push(body);
+        }
+        buildWallPhysics(0, 100, -200.5, 400, 200, 1); buildWallPhysics(0, 100, 200.5, 400, 200, 1);  
+        buildWallPhysics(-200.5, 100, 0, 1, 200, 400); buildWallPhysics(200.5, 100, 0, 1, 200, 400);  
+        buildWallPhysics(0, 200.5, 0, 400, 1, 400, true);
+
+        function toggleWalls() {
+            wallsActive = !wallsActive; document.getElementById('btnWalls').classList.toggle('active', wallsActive);
+            northGrid.visible = wallsActive; southGrid.visible = wallsActive; westGrid.visible = wallsActive; eastGrid.visible = wallsActive;
+            for(let i=0; i<4; i++) wallsActive ? world.addBody(enclosureBodies[i]) : world.removeBody(enclosureBodies[i]);
+        }
+        function toggleCeiling() {
+            ceilActive = !ceilActive; document.getElementById('btnCeiling').classList.toggle('active', ceilActive);
+            ceilGrid.visible = ceilActive;
+            ceilActive ? world.addBody(enclosureBodies.ceiling) : world.removeBody(enclosureBodies.ceiling);
+        }
+
+        function toggleGrid() { const btn = document.getElementById('btnGrid'); btn.classList.toggle('active'); if(floorGrid) floorGrid.visible = btn.classList.contains('active'); }
+        function setCamera(type) {
+            const target = controls.target.clone(); activeCamera = type === 'perspective' ? perspCam : orthoCam;
+            controls.dispose(); controls = new THREE.OrbitControls(activeCamera, renderer.domElement);
+            controls.enableDamping = true; controls.dampingFactor = 0.05; controls.maxPolarAngle = Math.PI / 2 - 0.01; 
+            controls.target.copy(target);
+        }
+        
+        // Init Base Default
+        setTheme('light');
+
+        // Cannon Mode Objects
+        const cannonTarget = new THREE.Mesh(
+            new THREE.RingGeometry(4, 5, 32),
+            new THREE.MeshBasicMaterial({ color: 0xff3333, side: THREE.DoubleSide, transparent: true, opacity: 0.8 })
+        );
+        cannonTarget.rotation.x = -Math.PI / 2;
+        cannonTarget.visible = false;
+        scene.add(cannonTarget);
+
+        const arcMaterial = new THREE.LineDashedMaterial({ color: 0xff3333, dashSize: 3, gapSize: 2 });
+        const arcGeometry = new THREE.BufferGeometry();
+        const arcLine = new THREE.Line(arcGeometry, arcMaterial);
+        arcLine.visible = false;
+        scene.add(arcLine);
+
+        let cannonStart = new THREE.Vector3();
+        let cannonV = new THREE.Vector3();
+
+        const filesToLoad = ['01_C.png', '02_L.png', '03_U.png', '04_B.png', '05_H.png', '06_A.png', '07_U.png', '08_S.png', '10_Bottom.png', '11_Top.png'];
+        const textures = {}; const textureLoader = new THREE.TextureLoader(); let loadedCount = 0;
+        let clubMaterials = [], hausMaterials = [];
+        const fallbackMat = new THREE.MeshStandardMaterial({ color: '#888', roughness: 0.6, metalness: 0.1 });
+        clubMaterials = Array(6).fill(fallbackMat); hausMaterials = Array(6).fill(fallbackMat);
+
+        function getMat(filename) { return new THREE.MeshStandardMaterial({ map: textures[filename], roughness: 0.6, metalness: 0.1 }); }
+        function buildMaterials() {
+            clubMaterials = [getMat('02_L.png'), getMat('04_B.png'), getMat('11_Top.png'), getMat('10_Bottom.png'), getMat('01_C.png'), getMat('03_U.png')];
+            hausMaterials = [getMat('06_A.png'), getMat('08_S.png'), getMat('11_Top.png'), getMat('10_Bottom.png'), getMat('05_H.png'), getMat('07_U.png')];
+        }
+
+        filesToLoad.forEach(file => {
+            textureLoader.load(`images/${file}`, (tex) => {
+                tex.encoding = THREE.sRGBEncoding; tex.anisotropy = renderer.capabilities.getMaxAnisotropy(); textures[file] = tex;
+                loadedCount++;
+                if (loadedCount === filesToLoad.length) {
+                    const statusBox = document.getElementById('status-box');
+                    if (statusBox) statusBox.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Textures Ready';
+                    buildMaterials();
+                }
+            }, undefined, () => { console.warn(`Missing texture: ${file}`); });
+        });
+
+        window.addEventListener('dragover', (e) => { e.preventDefault(); document.getElementById('drag-drop-overlay').classList.add('active'); });
+        window.addEventListener('dragleave', (e) => { e.preventDefault(); document.getElementById('drag-drop-overlay').classList.remove('active'); });
+        window.addEventListener('drop', (e) => {
+            e.preventDefault(); document.getElementById('drag-drop-overlay').classList.remove('active');
+            const file = e.dataTransfer.files[0]; if(!file) return;
+            const ext = file.name.split('.').pop().toLowerCase(); const url = URL.createObjectURL(file);
+
+            if (ext === 'glb' || ext === 'gltf') { new THREE.GLTFLoader().load(url, (gltf) => spawnModel(gltf.scene)); } 
+            else if (ext === 'obj') {
+                new THREE.OBJLoader().load(url, (obj) => {
+                    const tint = document.getElementById('tintPicker').value;
+                    const defaultMat = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.6, metalness: 0.1 });
+                    obj.traverse(child => { if(child.isMesh) child.material = defaultMat; }); spawnModel(obj);
+                });
+            } else if (ext === 'stl') {
+                new THREE.STLLoader().load(url, (geo) => {
+                    const tint = document.getElementById('tintPicker').value;
+                    const mat = new THREE.MeshStandardMaterial({ color: tint, roughness: 0.6, metalness: 0.1 });
+                    spawnModel(new THREE.Mesh(geo, mat));
+                });
+            }
+        });
+
+        function getBirthAttributes() {
+            return {
+                s: parseFloat(document.getElementById('sizeSlider').value), mass: parseFloat(document.getElementById('massSlider').value),
+                h: parseFloat(document.getElementById('heightSlider').value), linDamp: parseFloat(document.getElementById('linDampSlider').value),
+                angDamp: parseFloat(document.getElementById('angDampSlider').value), vX: parseFloat(document.getElementById('velXSlider').value),
+                vY: parseFloat(document.getElementById('velYSlider').value), vZ: parseFloat(document.getElementById('velZSlider').value),
+                sX: parseFloat(document.getElementById('spinXSlider').value), sY: parseFloat(document.getElementById('spinYSlider').value),
+                sZ: parseFloat(document.getElementById('spinZSlider').value)
+            };
+        }
+
+        function createStableBody(mass, shape, pos, attr) {
+            const body = new CANNON.Body({ 
+                mass: mass, shape: shape, material: defaultMaterial,
+                collisionFilterGroup: GROUP_BLOCK,
+                collisionFilterMask: GROUP_FLOOR | GROUP_BLOCK
+            });
+            
+            if (gridSnapActive) {
+                body.quaternion.set(0,0,0,1);
+                pos.x = Math.round(pos.x);
+                pos.z = Math.round(pos.z);
+            } else {
+                body.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0), Math.random() * Math.PI);
+            }
+            
+            body.position.copy(pos);
+            body.linearDamping = attr.linDamp; body.angularDamping = attr.angDamp;
+            body.velocity.set(attr.vX, attr.vY, attr.vZ); body.angularVelocity.set(attr.sX, attr.sY, attr.sZ);
+            body.allowSleep = true; body.sleepSpeedLimit = 0.5; body.sleepTimeLimit = 0.5;
+            return body;
+        }
+
+        function determineSpawnSettings(attr) {
+            let spawnPos = new CANNON.Vec3((Math.random() - 0.5) * 4, attr.h, (Math.random() - 0.5) * 4);
+            
+            if (spawnMode === 1) { 
+                raycaster.setFromCamera(mouse, activeCamera);
+                const floorHits = raycaster.intersectObject(floorMesh);
+                if(floorHits.length > 0) {
+                    spawnPos.set(
+                        Math.max(-190, Math.min(190, floorHits[0].point.x)), 
+                        floorHits[0].point.y + (attr.s/2) + 2, 
+                        Math.max(-190, Math.min(190, floorHits[0].point.z))
+                    );
+                }
+            } else if (spawnMode === 2 && cannonTarget.visible) { 
+                spawnPos.set(cannonStart.x, cannonStart.y, cannonStart.z);
+                attr.vX = cannonV.x;
+                attr.vY = cannonV.y;
+                attr.vZ = cannonV.z;
+                attr.sX = (Math.random() - 0.5) * 10;
+                attr.sY = (Math.random() - 0.5) * 10;
+                attr.sZ = (Math.random() - 0.5) * 10;
+            }
+            return spawnPos;
+        }
+
+        function spawnModel(modelGroup) {
+            const attr = getBirthAttributes();
+            const box = new THREE.Box3().setFromObject(modelGroup);
+            const size = box.getSize(new THREE.Vector3()); const maxDim = Math.max(size.x, size.y, size.z);
+            const scaleFactor = attr.s / maxDim;
+            modelGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
+            
+            const scaledBox = new THREE.Box3().setFromObject(modelGroup);
+            const extents = scaledBox.getSize(new THREE.Vector3()); const center = scaledBox.getCenter(new THREE.Vector3());
+            modelGroup.position.sub(center);
+            
+            const wrapper = new THREE.Group(); wrapper.add(modelGroup);
+            wrapper.traverse(c => { if(c.isMesh) { c.castShadow = true; c.receiveShadow = true; }});
+            scene.add(wrapper); meshes.push(wrapper);
+
+            const shape = new CANNON.Box(new CANNON.Vec3(extents.x/2, extents.y/2, extents.z/2));
+            const spawnPos = determineSpawnSettings(attr);
+            
+            const body = createStableBody(attr.mass, shape, spawnPos, attr);
+            world.addBody(body); bodies.push(body);
+        }
+
+        window.spawnBlock = function(type) {
+            const attr = getBirthAttributes(); const tint = document.getElementById('tintPicker').value;
+            const mats = (type === 'club' ? clubMaterials : hausMaterials).map(m => { const newMat = m.clone(); newMat.color.set(tint); return newMat; });
+
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(attr.s, attr.s, attr.s), mats);
+            mesh.castShadow = true; mesh.receiveShadow = true; scene.add(mesh); meshes.push(mesh);
+
+            const spawnPos = determineSpawnSettings(attr);
+            const body = createStableBody(attr.mass, new CANNON.Box(new CANNON.Vec3(attr.s/2, attr.s/2, attr.s/2)), spawnPos, attr);
+            world.addBody(body); bodies.push(body);
+        }
+
+        window.updatePhysicsMaterials = function() { contactMaterial.friction = parseFloat(document.getElementById('frictionSlider').value); contactMaterial.restitution = parseFloat(document.getElementById('bounceSlider').value); bodies.forEach(b => b.wakeUp()); }
+        window.updateContactParams = function() { contactMaterial.contactEquationStiffness = parseFloat(document.getElementById('stiffSlider').value); contactMaterial.contactEquationRelaxation = parseFloat(document.getElementById('relaxSlider').value); bodies.forEach(b => b.wakeUp()); }
+        window.updateGravity = function() { const gX = parseFloat(document.getElementById('gravXSlider').value); const gY = parseFloat(document.getElementById('gravYSlider').value); const gZ = parseFloat(document.getElementById('gravZSlider').value); world.gravity.set(gX, gY, gZ); bodies.forEach(b => b.wakeUp()); }
+        window.updateSolver = function() { world.solver.iterations = parseInt(document.getElementById('iterSlider').value); }
+        window.updateLighting = function() { ambientLight.intensity = parseFloat(document.getElementById('ambSlider').value); dirLight.intensity = parseFloat(document.getElementById('sunIntSlider').value); dirLight.position.set(parseFloat(document.getElementById('sunXSlider').value), parseFloat(document.getElementById('sunYSlider').value), parseFloat(document.getElementById('sunZSlider').value)); }
+
+        window.explode = function() { const p = parseFloat(document.getElementById('blastSlider').value); const upBias = parseFloat(document.getElementById('blastUpSlider').value); bodies.forEach(body => { body.wakeUp(); body.applyImpulse(new CANNON.Vec3((Math.random() - 0.5) * p * body.mass, (Math.random() * p * upBias) * body.mass, (Math.random() - 0.5) * p * body.mass), body.position); }); }
+        let isZeroG = false; let preGravY = -9.8;
+        window.toggleZeroG = function() { isZeroG = !isZeroG; const btn = document.getElementById('btnZeroG'); const gravYSlider = document.getElementById('gravYSlider'); const numY = document.getElementById('valGravY'); if(isZeroG) { btn.classList.add('active'); preGravY = parseFloat(gravYSlider.value); gravYSlider.value = 0; numY.value = 0; updateGravity(); gravYSlider.disabled = true; numY.disabled = true; } else { btn.classList.remove('active'); gravYSlider.disabled = false; numY.disabled = false; gravYSlider.value = preGravY; numY.value = preGravY; updateGravity(); } }
+        
+        window.clearStage = function() { 
+            if(activeDragConstraint) { world.removeConstraint(activeDragConstraint); activeDragConstraint = null; controls.enabled = true; draggedBody = null; draggedMesh = null; } 
+            meshes.forEach(m => scene.remove(m)); bodies.forEach(b => world.removeBody(b)); meshes = []; bodies = []; snapIndicator.visible = false; 
+        }
+
+        // --- GHOST DRAG & SCREEN-SPACE SNAP PHYSICS ---
+        let draggedBody = null; let draggedMesh = null;
+        let dragOffset = new THREE.Vector3(); const dragPlane = new THREE.Plane();
+        
+        const currentCursorPos = new THREE.Vector3();
+        let targetCenter = new THREE.Vector3();
+        let isSnapping = false;
+        let targetSnapPos = new THREE.Vector3();
+        let targetSnapQuat = new THREE.Quaternion();
+        let targetDragQuat = new THREE.Quaternion(); 
+        let shiftHeld = false;
+
+        const snapIndicator = new THREE.Mesh(
+            new THREE.PlaneGeometry(1, 1),
+            new THREE.MeshBasicMaterial({ color: 0x00d2ff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthTest: false })
+        );
+        const snapEdges = new THREE.LineSegments(
+            new THREE.EdgesGeometry(new THREE.PlaneGeometry(1, 1)),
+            new THREE.LineBasicMaterial({ color: 0x00d2ff, linewidth: 2, depthTest: false })
+        );
+        snapIndicator.add(snapEdges);
+        scene.add(snapIndicator);
+        snapIndicator.visible = false;
+
+        const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2();
+        const mouseBody = new CANNON.Body({ type: CANNON.Body.KINEMATIC, position: new CANNON.Vec3(0, 0, 0) });
+        mouseBody.collisionFilterGroup = 0; world.addBody(mouseBody);
+        let activeDragConstraint = null;
+
+        function awakenWorld() { bodies.forEach(b => b.wakeUp()); }
+
+        window.addEventListener('pointerdown', (event) => {
+            if(event.button !== 0 || event.target !== renderer.domElement) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            raycaster.setFromCamera(mouse, activeCamera);
+
+            const intersects = raycaster.intersectObjects(meshes, true); 
+            if (intersects.length > 0) {
+                controls.enabled = false; document.body.style.cursor = 'grabbing';
+                awakenWorld();
+
+                let hitObject = intersects[0].object;
+                while(hitObject.parent && hitObject.parent.type !== 'Scene' && !meshes.includes(hitObject)) { hitObject = hitObject.parent; }
+                
+                draggedMesh = hitObject; draggedBody = bodies[meshes.indexOf(hitObject)];
+                draggedBody.wakeUp();
+
+                // GHOST MODE: Disable block collisions, keep floor boundary
+                draggedBody.collisionFilterMask = GROUP_FLOOR;
+
+                targetDragQuat.copy(draggedMesh.quaternion);
+                
+                if (gridSnapActive) {
+                    const euler = new THREE.Euler().setFromQuaternion(targetDragQuat, 'YXZ');
+                    euler.x = Math.round(euler.x / (Math.PI/2)) * (Math.PI/2);
+                    euler.y = Math.round(euler.y / (Math.PI/2)) * (Math.PI/2);
+                    euler.z = Math.round(euler.z / (Math.PI/2)) * (Math.PI/2);
+                    targetDragQuat.setFromEuler(euler);
+                }
+
+                const hitPoint = intersects[0].point;
+                const cameraDirection = activeCamera.getWorldDirection(new THREE.Vector3()).negate();
+                dragPlane.setFromNormalAndCoplanarPoint(cameraDirection, hitPoint);
+                
+                // Track strictly from Center for perfect local pivots
+                dragOffset.copy(draggedMesh.position).sub(hitPoint);
+                targetCenter.copy(draggedBody.position);
+                mouseBody.position.copy(targetCenter);
+                currentCursorPos.copy(hitPoint);
+                
+                const localPivot = new CANNON.Vec3(0,0,0); 
+
+                activeDragConstraint = new CANNON.PointToPointConstraint(draggedBody, localPivot, mouseBody, new CANNON.Vec3(0,0,0));
+                activeDragConstraint.equations[0].maxForce = 1e6; activeDragConstraint.equations[1].maxForce = 1e6; activeDragConstraint.equations[2].maxForce = 1e6;
+                world.addConstraint(activeDragConstraint);
+                
+                isSnapping = false;
+            }
+        });
+
+        window.addEventListener('pointermove', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1; mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            if (draggedMesh && draggedBody) {
+                raycaster.setFromCamera(mouse, activeCamera);
+                
+                isSnapping = false;
+                snapIndicator.visible = false;
+
+                const hitPlane = raycaster.ray.intersectPlane(dragPlane, currentCursorPos);
+                if(hitPlane) {
+                    targetCenter.copy(currentCursorPos).add(dragOffset);
+                    
+                    if (gridSnapActive) {
+                        targetCenter.x = Math.round(targetCenter.x);
+                        targetCenter.z = Math.round(targetCenter.z);
+                    }
+                }
+
+                if (!shiftHeld) {
+                    const otherMeshes = meshes.filter(m => m !== draggedMesh);
+                    const hits = raycaster.intersectObjects(otherMeshes, true);
+                    
+                    if (hits.length > 0) {
+                        const hit = hits[0];
+                        let hitObj = hit.object;
+                        while(hitObj.parent && hitObj.parent.type !== 'Scene' && !otherMeshes.includes(hitObj)) hitObj = hitObj.parent;
+                        
+                        const hitIdx = meshes.indexOf(hitObj);
+                        if (hitIdx !== -1) {
+                            const hitBody = bodies[hitIdx];
+                            
+                            const normalMatrix = new THREE.Matrix3().getNormalMatrix(hit.object.matrixWorld);
+                            const worldNormal = hit.face.normal.clone().applyMatrix3(normalMatrix).normalize();
+
+                            const axes = [
+                                new THREE.Vector3(1,0,0).applyQuaternion(hitObj.quaternion), new THREE.Vector3(-1,0,0).applyQuaternion(hitObj.quaternion),
+                                new THREE.Vector3(0,1,0).applyQuaternion(hitObj.quaternion), new THREE.Vector3(0,-1,0).applyQuaternion(hitObj.quaternion),
+                                new THREE.Vector3(0,0,1).applyQuaternion(hitObj.quaternion), new THREE.Vector3(0,0,-1).applyQuaternion(hitObj.quaternion)
+                            ];
+                            
+                            let bestHitAxis = axes[0]; let maxDot = -1;
+                            for(let a of axes) { let d = worldNormal.dot(a); if(d > maxDot) { maxDot = d; bestHitAxis = a; } }
+
+                            const hitShape = hitBody.shapes[0];
+                            const dragShape = draggedBody.shapes[0];
+
+                            const localHitAxis = new CANNON.Vec3();
+                            hitBody.quaternion.inverse().vmult(new CANNON.Vec3(bestHitAxis.x, bestHitAxis.y, bestHitAxis.z), localHitAxis);
+                            
+                            let hitOffset = 0;
+                            if(Math.abs(localHitAxis.x) > 0.5) hitOffset = hitShape.halfExtents.x;
+                            else if(Math.abs(localHitAxis.y) > 0.5) hitOffset = hitShape.halfExtents.y;
+                            else hitOffset = hitShape.halfExtents.z;
+
+                            // Robust matching matrix 
+                            const tMat = new THREE.Matrix4().makeRotationFromQuaternion(hitObj.quaternion);
+                            const dMat = new THREE.Matrix4().makeRotationFromQuaternion(targetDragQuat);
+                            
+                            const tAxes = [
+                                new THREE.Vector3().setFromMatrixColumn(tMat, 0), new THREE.Vector3().setFromMatrixColumn(tMat, 0).negate(),
+                                new THREE.Vector3().setFromMatrixColumn(tMat, 1), new THREE.Vector3().setFromMatrixColumn(tMat, 1).negate(),
+                                new THREE.Vector3().setFromMatrixColumn(tMat, 2), new THREE.Vector3().setFromMatrixColumn(tMat, 2).negate()
+                            ];
+                            
+                            const dx = new THREE.Vector3().setFromMatrixColumn(dMat, 0);
+                            const dy = new THREE.Vector3().setFromMatrixColumn(dMat, 1);
+                            
+                            let bestDx = tAxes[0]; let maxDxDot = -Infinity;
+                            for(let a of tAxes) { let dot = dx.dot(a); if(dot > maxDxDot) { maxDxDot = dot; bestDx = a; } }
+                            
+                            let bestDy = null; let maxDyDot = -Infinity;
+                            for(let a of tAxes) { 
+                                if(Math.abs(a.dot(bestDx)) > 0.9) continue; 
+                                let dot = dy.dot(a); if(bestDy === null || dot > maxDyDot) { maxDyDot = dot; bestDy = a; } 
+                            }
+                            if (!bestDy) bestDy = tAxes.find(a => Math.abs(a.dot(bestDx)) < 0.9);
+
+                            let calcSnapQuat = new THREE.Quaternion();
+                            if (bestDy) {
+                                const bestDz = new THREE.Vector3().crossVectors(bestDx, bestDy).normalize();
+                                const cleanDy = new THREE.Vector3().crossVectors(bestDz, bestDx).normalize();
+                                const resMat = new THREE.Matrix4().makeBasis(bestDx, cleanDy, bestDz);
+                                calcSnapQuat.setFromRotationMatrix(resMat);
+                            } else {
+                                calcSnapQuat.copy(targetDragQuat);
+                            }
+
+                            const snapQuatCannon = new CANNON.Quaternion(calcSnapQuat.x, calcSnapQuat.y, calcSnapQuat.z, calcSnapQuat.w);
+                            const localDragAxis = new CANNON.Vec3();
+                            snapQuatCannon.inverse().vmult(new CANNON.Vec3(bestHitAxis.x, bestHitAxis.y, bestHitAxis.z), localDragAxis);
+                            
+                            let dragOffsetDist = 0;
+                            if(Math.abs(localDragAxis.x) > 0.5) dragOffsetDist = dragShape.halfExtents.x;
+                            else if(Math.abs(localDragAxis.y) > 0.5) dragOffsetDist = dragShape.halfExtents.y;
+                            else dragOffsetDist = dragShape.halfExtents.z;
+
+                            const shiftDist = hitOffset + dragOffsetDist;
+                            const calcSnapPos = new THREE.Vector3(
+                                hitObj.position.x + bestHitAxis.x * shiftDist,
+                                hitObj.position.y + bestHitAxis.y * shiftDist,
+                                hitObj.position.z + bestHitAxis.z * shiftDist
+                            );
+
+                            isSnapping = true;
+                            targetSnapPos.copy(calcSnapPos);
+                            targetSnapQuat.copy(calcSnapQuat);
+
+                            let faceSize = Math.max(hitShape.halfExtents.x, hitShape.halfExtents.y, hitShape.halfExtents.z) * 2; 
+                            snapIndicator.position.set(
+                                hitObj.position.x + bestHitAxis.x * (hitOffset + 0.05),
+                                hitObj.position.y + bestHitAxis.y * (hitOffset + 0.05),
+                                hitObj.position.z + bestHitAxis.z * (hitOffset + 0.05)
+                            );
+                            snapIndicator.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), bestHitAxis);
+                            snapIndicator.scale.set(faceSize, faceSize, 1);
+                            snapIndicator.visible = true;
+                        }
+                    }
+                }
+            }
+        });
+
+        window.addEventListener('pointerup', () => {
+            if (draggedBody && activeDragConstraint) {
+                world.removeConstraint(activeDragConstraint); activeDragConstraint = null; 
+                
+                // RESTORE FULL COLLISIONS
+                draggedBody.collisionFilterMask = GROUP_FLOOR | GROUP_BLOCK;
+                draggedBody.wakeUp();
+                
+                draggedBody = null; draggedMesh = null;
+                snapIndicator.visible = false;
+                controls.enabled = true; document.body.style.cursor = 'default';
+                awakenWorld(); 
+            }
+        });
+
+        function scaleDraggedObject(factor) {
+            if (!draggedMesh || !draggedBody) return;
+            draggedMesh.scale.multiplyScalar(factor);
+
+            const shape = draggedBody.shapes[0];
+            if (shape && shape.type === CANNON.Shape.types.BOX) {
+                shape.halfExtents.scale(factor, shape.halfExtents);
+                shape.updateConvexPolyhedronRepresentation(); shape.updateBoundingSphereRadius();
+            }
+            draggedBody.mass *= Math.pow(factor, 3);
+            draggedBody.updateMassProperties(); draggedBody.updateBoundingRadius();
+            
+            if (activeDragConstraint) { activeDragConstraint.pivotA.scale(factor, activeDragConstraint.pivotA); }
+            draggedBody.wakeUp();
+        }
+
+        window.addEventListener('keydown', e => { if(e.key === 'Shift') shiftHeld = true; });
+        window.addEventListener('keyup', e => { if(e.key === 'Shift') shiftHeld = false; });
+
+        window.addEventListener('keydown', (event) => {
+            if(draggedBody) {
+                let axis = null; let angle = 0;
+                
+                // Local Space Rotations
+                if(event.key.toLowerCase() === 'w') { axis = new THREE.Vector3(1,0,0); angle = -Math.PI/2; event.preventDefault(); }
+                if(event.key.toLowerCase() === 's') { axis = new THREE.Vector3(1,0,0); angle = Math.PI/2; event.preventDefault(); }
+                if(event.key.toLowerCase() === 'a') { axis = new THREE.Vector3(0,1,0); angle = -Math.PI/2; event.preventDefault(); }
+                if(event.key.toLowerCase() === 'd') { axis = new THREE.Vector3(0,1,0); angle = Math.PI/2; event.preventDefault(); }
+                
+                if (axis) {
+                    const rotQuat = new THREE.Quaternion().setFromAxisAngle(axis, angle);
+                    targetDragQuat.multiply(rotQuat); // Local rotation around center pivot
+                }
+                
+                // Scale
+                if(event.key === '1') scaleDraggedObject(1 / 1.05);
+                if(event.key === '2') scaleDraggedObject(1.05);
+            }
+            
+            const isTextInput = event.target.tagName === 'INPUT' && (event.target.type === 'text' || event.target.type === 'number');
+            if(!isTextInput) {
+                if(event.key.toLowerCase() === 'q') { event.preventDefault(); if (document.activeElement) document.activeElement.blur(); spawnBlock('club'); }
+                if(event.key.toLowerCase() === 'e') { event.preventDefault(); if (document.activeElement) document.activeElement.blur(); spawnBlock('haus'); }
+                if(event.key.toLowerCase() === 'x') { event.preventDefault(); if (document.activeElement) document.activeElement.blur(); clearStage(); }
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            const aspect = window.innerWidth / window.innerHeight;
+            perspCam.aspect = aspect; perspCam.updateProjectionMatrix();
+            orthoCam.left = -d * aspect; orthoCam.right = d * aspect; orthoCam.top = d; orthoCam.bottom = -d; orthoCam.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const timeScale = parseFloat(document.getElementById('timeSlider').value);
+            world.step((1 / 60) * timeScale);
+            
+            const windX = parseFloat(document.getElementById('windXSlider').value);
+            const windY = parseFloat(document.getElementById('windYSlider').value);
+            const windZ = parseFloat(document.getElementById('windZSlider').value);
+            const vortexStr = parseFloat(document.getElementById('vortexSlider').value);
+
+            if(windX !== 0 || windY !== 0 || windZ !== 0 || vortexStr !== 0) {
+                bodies.forEach(b => {
+                    let fX = windX * b.mass;
+                    let fY = windY * b.mass;
+                    let fZ = windZ * b.mass;
+
+                    if(vortexStr !== 0) {
+                        const dx = b.position.x; const dz = b.position.z;
+                        const dist = Math.sqrt(dx*dx + dz*dz);
+                        if (dist > 0.1) {
+                            fX += (-dz / dist) * vortexStr * b.mass;
+                            fZ += (dx / dist) * vortexStr * b.mass;
+                        }
+                    }
+                    b.applyForce(new CANNON.Vec3(fX, fY, fZ), b.position);
+                });
+            }
+
+            // Cannon Mode Targeting Update
+            if (spawnMode === 2 && !draggedBody) {
+                raycaster.setFromCamera(mouse, activeCamera);
+                const floorHits = raycaster.intersectObject(floorMesh);
+                if (floorHits.length > 0) {
+                    const hitPt = floorHits[0].point;
+                    hitPt.x = Math.max(-190, Math.min(190, hitPt.x));
+                    hitPt.z = Math.max(-190, Math.min(190, hitPt.z));
+                    
+                    cannonTarget.position.copy(hitPt);
+                    cannonTarget.position.y = 0.5;
+                    cannonTarget.visible = true;
+
+                    // Anchor exactly to the bottom-center of the screen
+                    const screenBottom = new THREE.Vector3(0, -0.9, 0.5);
+                    screenBottom.unproject(activeCamera);
+                    const aimDir = screenBottom.sub(activeCamera.position).normalize();
+                    cannonStart.copy(activeCamera.position).add(aimDir.multiplyScalar(30));
+
+                    const dist = cannonStart.distanceTo(hitPt);
+                    
+                    // LOBBED TRAJECTORY: 25% Slower Time-of-Flight creates a higher, more pronounced parabolic arc
+                    const T = Math.max(0.8, Math.min(4.0, (dist / 60) * 1.25)); 
+                    
+                    const gY = world.gravity.y || -9.8;
+                    const accX = windX;
+                    const accY = gY + windY;
+                    const accZ = windZ;
+
+                    cannonV.x = (hitPt.x - cannonStart.x - 0.5 * accX * T * T) / T;
+                    cannonV.y = (hitPt.y - cannonStart.y - 0.5 * accY * T * T) / T;
+                    cannonV.z = (hitPt.z - cannonStart.z - 0.5 * accZ * T * T) / T;
+
+                    const pts = [];
+                    for(let i=0; i<=30; i++) { 
+                        const t = (i/30) * T;
+                        const px = cannonStart.x + cannonV.x * t + 0.5 * accX * t * t;
+                        const py = cannonStart.y + cannonV.y * t + 0.5 * accY * t * t;
+                        const pz = cannonStart.z + cannonV.z * t + 0.5 * accZ * t * t;
+                        pts.push(px, py, pz);
+                    }
+                    arcLine.geometry.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+                    arcLine.geometry.attributes.position.needsUpdate = true;
+                    arcLine.computeLineDistances();
+                    arcLine.visible = true;
+                } else {
+                    cannonTarget.visible = false;
+                    arcLine.visible = false;
+                }
+            } else {
+                cannonTarget.visible = false;
+                arcLine.visible = false;
+            }
+            
+            if (draggedBody && activeDragConstraint) {
+                
+                draggedBody.force.y += -world.gravity.y * draggedBody.mass;
+
+                const currentQuat = new THREE.Quaternion(draggedBody.quaternion.x, draggedBody.quaternion.y, draggedBody.quaternion.z, draggedBody.quaternion.w);
+                let destPos = new THREE.Vector3();
+
+                if (isSnapping && !shiftHeld) {
+                    currentQuat.slerp(targetSnapQuat, 0.4);
+                    draggedBody.quaternion.set(currentQuat.x, currentQuat.y, currentQuat.z, currentQuat.w);
+                    targetDragQuat.copy(targetSnapQuat); 
+                    destPos.copy(targetSnapPos);
+                } else {
+                    currentQuat.slerp(targetDragQuat, 0.3);
+                    draggedBody.quaternion.set(currentQuat.x, currentQuat.y, currentQuat.z, currentQuat.w);
+                    destPos.copy(targetCenter);
+                }
+
+                let lowestY = Infinity;
+                const ext = draggedBody.shapes[0].halfExtents;
+                const signs = [1, -1];
+                for(let x of signs) {
+                    for(let y of signs) {
+                        for(let z of signs) {
+                            const v = new THREE.Vector3(ext.x * x, ext.y * y, ext.z * z);
+                            v.applyQuaternion(targetDragQuat);
+                            if(v.y < lowestY) lowestY = v.y;
+                        }
+                    }
+                }
+                
+                const reqHeight = Math.abs(lowestY) + 0.05;
+                if (destPos.y < reqHeight) destPos.y = reqHeight;
+
+                mouseBody.position.x += (destPos.x - mouseBody.position.x) * 0.4;
+                mouseBody.position.y += (destPos.y - mouseBody.position.y) * 0.4;
+                mouseBody.position.z += (destPos.z - mouseBody.position.z) * 0.4;
+
+                draggedBody.angularVelocity.set(0,0,0);
+                draggedBody.wakeUp();
+            }
+
+            if (isResettingCam) {
+                activeCamera.position.lerp(targetCamPos, 0.08);
+                controls.target.lerp(targetCamLookAt, 0.08);
+                activeCamera.lookAt(controls.target);
+                if (activeCamera.position.distanceTo(targetCamPos) < 0.5 && controls.target.distanceTo(targetCamLookAt) < 0.5) {
+                    isResettingCam = false;
+                    activeCamera.position.copy(targetCamPos);
+                    controls.target.copy(targetCamLookAt);
+                    controls.update();
+                }
+            } else if (!draggedBody) {
+                controls.update();
+            }
+
+            for (let i = 0; i < meshes.length; i++) {
+                meshes[i].position.copy(bodies[i].position);
+                meshes[i].quaternion.copy(bodies[i].quaternion);
+            }
+            renderer.render(scene, activeCamera);
+        }
+        animate();
+    </script>
+</body>
+</html>
